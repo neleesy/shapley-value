@@ -145,13 +145,6 @@
   .ax.broke .axname,.ax.broke .mark{color:var(--red); text-shadow:0 0 12px rgba(255,59,107,.75)}
   @keyframes pulse{0%,100%{box-shadow:0 0 18px rgba(255,59,107,.24)}50%{box-shadow:0 0 30px rgba(255,59,107,.50)}}
 
-  /* ── callout ── */
-  .callout{border-left:2px solid var(--red); background:rgba(255,59,107,.07); padding:13px 16px;
-    font-size:13.5px; margin-top:14px; color:var(--text); box-shadow:inset 0 0 30px rgba(255,59,107,.06)}
-  .callout.good{border-left-color:var(--green); background:rgba(77,255,160,.06); box-shadow:none}
-  .callout.idle{border-left-color:var(--line); background:#080C12; color:var(--muted); box-shadow:none}
-  .callout b{font-weight:600; color:#fff}
-  .callout .fml{font-family:var(--mono); font-size:13px; display:block; margin-top:7px; color:var(--cyan)}
 
   .solve{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:18px; font-size:13.5px; color:var(--muted)}
   .solve input{width:72px}
@@ -228,40 +221,12 @@
   </div>
 </section>
 
-<!-- ═══ 3. 시도 1 — 페널티 ═══ -->
+<!-- ═══ 3. α 저울 (SIGNATURE) ═══ -->
 <section>
-  <div class="shead"><span class="snum">03</span><h2>시도 1 — 특성함수에 윤리적 비용 빼기</h2></div>
+  <div class="shead"><span class="snum">03</span><h2>윤리를 반영한 배분 — 균등해 샤플리 밸류</h2></div>
   <p class="snote">
-    <b>이 모듈의 목적은 이 방법이 왜 실패하는지 직접 확인하는 것이다.</b>
-    가장 먼저 떠오르는 아이디어는 “v가 금전적 이윤만 담고 있으니, 여기에 윤리적 비용을 빼자”는 것이다.
-    착취가 발생하는 연합(= C가 포함된 연합)에 사회적 비용 D를 물린다.
-    <span style="font-family:var(--mono)">v*(S) = v(S) − λ·D(S)</span>.
-    노동자를 지키려는 의도다. λ를 올려서 결과를 확인해 보라.
-  </p>
-
-  <div class="card">
-    <p class="snote" style="margin-bottom:12px">
-      <b>D(S)는 고정된 규칙이고, 슬라이더는 그 비용의 크기 λ만 움직인다.</b>
-      D는 착취가 실제로 발생하는 연합, 즉 <b>C가 포함된 연합에서만 1</b>이다.
-    </p>
-    <table id="dTable" style="margin-bottom:20px"></table>
-
-    <div class="vrow" style="grid-template-columns:200px 1fr 62px; margin-bottom:18px">
-      <span class="vlabel">λ &nbsp;<span style="color:var(--muted);font-weight:400">사회적 비용의 크기</span></span>
-      <input type="range" id="lam" min="0" max="30" step="1" value="0">
-      <input type="number" id="lamN" min="0" max="30" step="1" value="0">
-    </div>
-    <div class="bars" id="penBars"></div>
-    <div id="penMsg"></div>
-  </div>
-</section>
-
-<!-- ═══ 4. 시도 2 — α 저울 (SIGNATURE) ═══ -->
-<section>
-  <div class="shead"><span class="snum">04</span><h2>시도 2 — 배분 규칙 자체를 바꾸기</h2></div>
-  <p class="snote">
-    <b>시도 1이 실패한 이유는 입력값 v를 고쳤기 때문이다. v를 깎는 것은 파이를 줄이는 일이지 다시 나누는 일이 아니다.</b>
-    재분배가 일어나려면 배분 규칙 φ 자체를 바꾸어야 한다.
+    <b>기여가 0인 사람에게 0을 주는 것은 더미 공리가 강제하는 결과다.</b>
+    여기에 윤리적 가치를 넣으려면 입력값 v가 아니라 <b>배분 규칙 φ 자체</b>를 바꾸어야 한다.
     <span style="font-family:var(--mono)">φᵢ^α(v) = α · φᵢ(v) + (1 − α) · v(N)/n</span> —
     기여 원칙과 평등 원칙의 가중치를 α 하나로 조절한다. 다이얼을 움직이며
     <b>어떤 공리가 살아남고 어떤 공리가 깨지는지</b> 지켜볼 것.
@@ -320,7 +285,7 @@ const PRESETS = {
 };
 
 let v = Object.assign({}, PRESETS.base);
-let alpha = 1, lambda = 0, tabI = 2;
+let alpha = 1, tabI = 2;
 
 const fmt = (x,d=2) => (Math.round(x*10**d)/10**d).toFixed(d);
 const val = (S) => S === 0 ? 0 : (v[S] ?? 0);
@@ -357,9 +322,6 @@ document.querySelectorAll("button.preset").forEach(b =>
 );
 
 // ── 슬라이더들 ──
-const lam = document.getElementById("lam"), lamN = document.getElementById("lamN");
-const syncLam = e => { lambda = Math.max(0, +e.target.value || 0); lam.value = lamN.value = lambda; render(); };
-lam.addEventListener("input", syncLam); lamN.addEventListener("input", syncLam);
 
 document.getElementById("aslider").addEventListener("input", e => { alpha = +e.target.value; render(); });
 document.getElementById("target").addEventListener("input", render);
@@ -484,53 +446,7 @@ function render(){
        `<td class="m">φ_${NAMES[tabI]} =</td><td class="m">${fmt(acc)}</td></tr>`;
   document.getElementById("formulaTable").innerHTML = f;
 
-  // 03 페널티
-  const penV = S => val(S) - (S & 4 ? lambda : 0);
-  const phiPen = shapley(penV);
-
-  // D(S) 정의표 + D 게임에서의 한계 기여도
-  const dMC = [0,0,0];
-  for (const o of PERMS){
-    let S = 0;
-    for (const i of o){ dMC[i] += ((S|(1<<i)) & 4 ? 1 : 0) - (S & 4 ? 1 : 0); S |= 1<<i; }
-  }
-  let dt = `<tr><th>연합 S</th><th class="m">C 포함?</th><th class="m">D(S)</th><th class="m">λ·D(S)</th><th>페널티</th></tr>`;
-  for (let S = 0; S < 8; S++){
-    const lbl = S === 0 ? "∅" : `{${[0,1,2].filter(j => S & (1<<j)).map(j=>NAMES[j]).join(",")}}`;
-    const has = !!(S & 4), d = has ? 1 : 0;
-    dt += `<tr><td class="m">${lbl}</td><td class="m">${has ? "예" : "아니오"}</td>` +
-          `<td class="m" ${has ? 'style="color:var(--red)"' : ""}>${d}</td>` +
-          `<td class="m" ${has && lambda ? 'style="color:var(--red)"' : ""}>${fmt(d*lambda,0)}</td>` +
-          `<td>${has ? "−" + fmt(lambda,0) : "없음"}</td></tr>`;
-  }
-  dt += `<tr class="sum"><td colspan="2">D 게임에서의 φ(D)</td>` +
-        `<td colspan="3" class="m">( ${dMC.map(x=>fmt(x/6,0)).join(", ")} ) × λ = ( 0, 0, ${fmt(lambda,0)} ) ` +
-        `&nbsp;— A와 B는 D에서 <b>더미 플레이어</b>다</td></tr>`;
-  document.getElementById("dTable").innerHTML = dt;
-
-  bars(document.getElementById("penBars"), phiPen, vN, phi);
-  const drop = phi[2] - phiPen[2];
-  const irBreak = phiPen[2] < val(4) - 1e-9;   // 개인 합리성: φ_C ≥ v({C}) 이어야 참여한다
-  document.getElementById("penMsg").innerHTML = lambda === 0
-    ? `<div class="callout idle">λ를 올려 보라. 점선은 페널티 이전의 몫이다.</div>`
-    : `<div class="callout">
-         <b>페널티 ${lambda}을 부과했더니 C의 몫이 ${fmt(phi[2])} → ${fmt(phiPen[2])}로 ${fmt(drop)}만큼 줄었다.</b>
-         페널티 전액이 C에게 청구된 것이다. 원인은 <b>가법성 공리</b>다.
-         <span class="fml">φ(v − λD) = φ(v) − λ · φ(D),&nbsp; 그리고 φ(D) = (0, 0, ${fmt(lambda,0)})</span>
-         D가 움직이는 것은 오직 C가 합류하는 순간뿐이다. A와 B는 페널티 게임 D에서 <b>더미 플레이어</b>이므로 한 푼도 부담하지 않는다.
-         샤플리 밸류는 비용을 “누가 감당할 능력이 있는가”가 아니라 <b>“누구의 존재가 그 비용을 발생시켰는가”</b>로 배분하기 때문이다.
-         결국 착취의 비용은 착취당하는 당사자에게 청구된다. 파이가 ${fmt(vN,0)} → ${fmt(vN-lambda,0)}으로 줄었을 뿐, 재분배는 일어나지 않았다.
-       </div>` +
-      (irBreak ? `<div class="callout" style="margin-top:10px">
-         <b>개인 합리성(individual rationality) 위반.</b>
-         이제 φ_C = ${fmt(phiPen[2])} 로, C가 혼자 있을 때의 가치 v({C}) = ${fmt(val(4),0)} 보다도 작다.
-         협력에 참여하는 것이 참여하지 않는 것보다 손해라는 뜻이므로, <b>C는 애초에 연합에 들어오지 않는다.</b>
-         ${phiPen[2] < 0 ? "몫이 음수라는 것은 C가 오히려 돈을 내야 한다는 뜻이다." : ""}
-         즉 윤리적 페널티는 노동자의 몫을 빼앗을 뿐 아니라, 충분히 커지면 <b>노동자를 협력에서 이탈시킨다.</b>
-         착취를 없애려던 규제가 일자리 자체를 없애는 결과다.
-       </div>` : "");
-
-  // 04 균등해 샤플리
+  // 03 균등해 샤플리
   const eq = vN/3;
   const egal = phi.map(x => alpha*x + (1-alpha)*eq);
   bars(document.getElementById("egalBars"), egal, vN, phi);
