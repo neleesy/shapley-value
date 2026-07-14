@@ -240,8 +240,14 @@
   </p>
 
   <div class="card">
-    <div class="vrow" style="grid-template-columns:100px 1fr 62px; margin-bottom:18px">
-      <span class="vlabel">λ·D</span>
+    <p class="snote" style="margin-bottom:12px">
+      <b>D(S)는 고정된 규칙이고, 슬라이더는 그 비용의 크기 λ만 움직인다.</b>
+      D는 착취가 실제로 발생하는 연합, 즉 <b>C가 포함된 연합에서만 1</b>이다.
+    </p>
+    <table id="dTable" style="margin-bottom:20px"></table>
+
+    <div class="vrow" style="grid-template-columns:200px 1fr 62px; margin-bottom:18px">
+      <span class="vlabel">λ &nbsp;<span style="color:var(--muted);font-weight:400">사회적 비용의 크기</span></span>
       <input type="range" id="lam" min="0" max="30" step="1" value="0">
       <input type="number" id="lamN" min="0" max="30" step="1" value="0">
     </div>
@@ -481,6 +487,27 @@ function render(){
   // 03 페널티
   const penV = S => val(S) - (S & 4 ? lambda : 0);
   const phiPen = shapley(penV);
+
+  // D(S) 정의표 + D 게임에서의 한계 기여도
+  const dMC = [0,0,0];
+  for (const o of PERMS){
+    let S = 0;
+    for (const i of o){ dMC[i] += ((S|(1<<i)) & 4 ? 1 : 0) - (S & 4 ? 1 : 0); S |= 1<<i; }
+  }
+  let dt = `<tr><th>연합 S</th><th class="m">C 포함?</th><th class="m">D(S)</th><th class="m">λ·D(S)</th><th>페널티</th></tr>`;
+  for (let S = 0; S < 8; S++){
+    const lbl = S === 0 ? "∅" : `{${[0,1,2].filter(j => S & (1<<j)).map(j=>NAMES[j]).join(",")}}`;
+    const has = !!(S & 4), d = has ? 1 : 0;
+    dt += `<tr><td class="m">${lbl}</td><td class="m">${has ? "예" : "아니오"}</td>` +
+          `<td class="m" ${has ? 'style="color:var(--red)"' : ""}>${d}</td>` +
+          `<td class="m" ${has && lambda ? 'style="color:var(--red)"' : ""}>${fmt(d*lambda,0)}</td>` +
+          `<td>${has ? "−" + fmt(lambda,0) : "없음"}</td></tr>`;
+  }
+  dt += `<tr class="sum"><td colspan="2">D 게임에서의 φ(D)</td>` +
+        `<td colspan="3" class="m">( ${dMC.map(x=>fmt(x/6,0)).join(", ")} ) × λ = ( 0, 0, ${fmt(lambda,0)} ) ` +
+        `&nbsp;— A와 B는 D에서 <b>더미 플레이어</b>다</td></tr>`;
+  document.getElementById("dTable").innerHTML = dt;
+
   bars(document.getElementById("penBars"), phiPen, vN, phi);
   const drop = phi[2] - phiPen[2];
   const irBreak = phiPen[2] < val(4) - 1e-9;   // 개인 합리성: φ_C ≥ v({C}) 이어야 참여한다
