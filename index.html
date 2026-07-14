@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>샤플리 분배 계산기 — 기여와 평등 사이</title>
+<meta name="description" content="협조적 게임이론의 샤플리 밸류를 계산하고, 윤리적 가치를 도입했을 때 어떤 공리가 깨지는지 확인하는 도구.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2430; --paper:#E7EAEE; --card:#FFFFFF; --line:#C9D0D8;
+    --contrib:#1D4E89; --equal:#0E7C66; --alert:#A3232B; --muted:#667180;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --sans:'IBM Plex Sans KR',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans);
+    font-size:15px; line-height:1.65; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:32px 20px 80px}
+
+  /* ── header ── */
+  header{border-bottom:2px solid var(--ink); padding-bottom:22px; margin-bottom:32px}
+  .eyebrow{
+    font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--muted); margin:0 0 10px;
+  }
+  h1{font-size:clamp(26px,4.2vw,38px); font-weight:700; letter-spacing:-.02em; margin:0 0 8px; line-height:1.2}
+  .lede{color:var(--muted); max-width:62ch; margin:0; font-size:14.5px}
+
+  /* ── section ── */
+  section{margin-bottom:36px}
+  .shead{display:flex; align-items:baseline; gap:12px; margin-bottom:14px; border-bottom:1px solid var(--line); padding-bottom:8px}
+  .snum{font-family:var(--mono); font-size:12px; font-weight:600; color:var(--contrib)}
+  h2{font-size:19px; font-weight:600; margin:0; letter-spacing:-.01em}
+  .snote{font-size:13px; color:var(--muted); margin:0 0 16px; max-width:70ch}
+
+  .card{background:var(--card); border:1px solid var(--line); padding:20px; margin-bottom:14px}
+
+  /* ── presets ── */
+  .presets{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px}
+  button.preset{
+    font-family:var(--sans); font-size:13px; font-weight:500; cursor:pointer;
+    background:var(--card); border:1px solid var(--line); color:var(--ink);
+    padding:7px 13px; transition:background .12s,border-color .12s;
+  }
+  button.preset:hover{background:#F2F4F6; border-color:var(--ink)}
+  button.preset:focus-visible{outline:2px solid var(--contrib); outline-offset:2px}
+
+  /* ── v(S) inputs ── */
+  .vgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px 22px}
+  .vrow{display:grid; grid-template-columns:78px 1fr 62px; align-items:center; gap:10px}
+  .vlabel{font-family:var(--mono); font-size:13px; font-weight:500}
+  input[type=range]{width:100%; accent-color:var(--contrib); cursor:pointer}
+  input[type=number]{
+    font-family:var(--mono); font-size:13px; width:100%; padding:5px 6px; text-align:right;
+    border:1px solid var(--line); background:var(--card); color:var(--ink);
+  }
+  input:focus-visible{outline:2px solid var(--contrib); outline-offset:1px}
+
+  .flag{
+    display:inline-block; font-family:var(--mono); font-size:11.5px; font-weight:600;
+    padding:4px 9px; margin-top:16px; letter-spacing:.03em;
+  }
+  .flag.on{background:#FBE9EA; color:var(--alert); border:1px solid var(--alert)}
+  .flag.off{background:#EEF1F3; color:var(--muted); border:1px solid var(--line)}
+
+  /* ── bars ── */
+  .bars{display:flex; flex-direction:column; gap:11px}
+  .bar{display:grid; grid-template-columns:132px 1fr 74px; align-items:center; gap:12px}
+  .bname{font-size:13px; font-weight:500}
+  .bname small{display:block; color:var(--muted); font-weight:400; font-size:11.5px; line-height:1.3}
+  .btrack{height:26px; background:#EDF0F2; position:relative; overflow:hidden}
+  .bfill{height:100%; transition:width .18s ease}
+  .bghost{position:absolute; top:0; height:100%; border-right:2px dashed var(--muted); opacity:.55}
+  .bval{font-family:var(--mono); font-size:15px; font-weight:600; text-align:right}
+
+  /* ── tables ── */
+  table{width:100%; border-collapse:collapse; font-size:13px}
+  th,td{border:1px solid var(--line); padding:6px 9px; text-align:center}
+  th{background:#EEF1F3; font-weight:600; font-size:12px}
+  td.l{text-align:left}
+  td.m,th.m{font-family:var(--mono)}
+  tr.sum td{background:#F5F7F8; font-weight:600}
+
+  .tabs{display:flex; gap:0; margin-bottom:12px}
+  button.tab{
+    font-family:var(--mono); font-size:13px; font-weight:500; cursor:pointer;
+    background:var(--card); border:1px solid var(--line); border-right:none; color:var(--muted);
+    padding:6px 16px;
+  }
+  button.tab:last-child{border-right:1px solid var(--line)}
+  button.tab[aria-selected=true]{background:var(--ink); color:#fff; border-color:var(--ink)}
+  button.tab:focus-visible{outline:2px solid var(--contrib); outline-offset:2px}
+
+  /* ── SIGNATURE: balance beam ── */
+  .beam{padding:26px 20px 20px}
+  .poles{display:flex; justify-content:space-between; margin-bottom:6px}
+  .pole{font-size:13px; font-weight:600}
+  .pole small{display:block; font-family:var(--mono); font-size:11px; font-weight:400; color:var(--muted)}
+  .pole.left{color:var(--contrib); text-align:left}
+  .pole.right{color:var(--equal); text-align:right}
+  .beamtrack{position:relative; height:4px; background:linear-gradient(90deg,var(--equal),var(--contrib)); margin:14px 0 4px}
+  .beamtrack::before,.beamtrack::after{
+    content:''; position:absolute; top:-5px; width:2px; height:14px; background:var(--ink);
+  }
+  .beamtrack::before{left:0} .beamtrack::after{right:0}
+  #aslider{width:100%; margin:0; accent-color:var(--ink)}
+  .areadout{
+    font-family:var(--mono); font-size:28px; font-weight:600; text-align:center; margin:10px 0 2px;
+  }
+  .areadout span{font-size:13px; color:var(--muted); font-weight:400}
+  .ahint{text-align:center; font-size:12.5px; color:var(--muted); margin:0}
+
+  /* ── axiom badges ── */
+  .axioms{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-top:22px}
+  .ax{border:1px solid var(--line); padding:11px 13px; background:var(--card); transition:all .18s}
+  .ax .axname{font-size:13px; font-weight:600; display:flex; justify-content:space-between; align-items:center}
+  .ax .axdesc{font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.45}
+  .mark{font-family:var(--mono); font-weight:700; font-size:15px}
+  .ax.keep{border-color:var(--equal)} .ax.keep .mark{color:var(--equal)}
+  .ax.broke{border-color:var(--alert); background:#FBE9EA} .ax.broke .mark{color:var(--alert)}
+  .ax.broke .axname{color:var(--alert)}
+
+  /* ── callout ── */
+  .callout{border-left:3px solid var(--alert); background:#FBE9EA; padding:13px 16px; font-size:13.5px; margin-top:14px}
+  .callout.good{border-left-color:var(--equal); background:#E7F3F0}
+  .callout b{font-weight:600}
+  .callout .fml{font-family:var(--mono); font-size:13px; display:block; margin-top:6px}
+
+  .solve{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:16px; font-size:13.5px}
+  .solve input{width:72px}
+  button.act{
+    font-family:var(--sans); font-size:13px; font-weight:500; cursor:pointer; color:#fff;
+    background:var(--ink); border:1px solid var(--ink); padding:7px 14px;
+  }
+  button.act:hover{background:#2C3846}
+  button.act:disabled{background:var(--muted); border-color:var(--muted); cursor:not-allowed}
+  button.act:focus-visible{outline:2px solid var(--contrib); outline-offset:2px}
+
+  footer{border-top:1px solid var(--line); padding-top:16px; font-size:12px; color:var(--muted)}
+
+  @media (max-width:560px){
+    .bar{grid-template-columns:90px 1fr 62px}
+    .vrow{grid-template-columns:70px 1fr 56px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">협조적 게임이론 · 분배 정의</p>
+  <h1>샤플리 분배 계산기</h1>
+  <p class="lede">
+    각 주체의 한계 기여도로 이익을 나누면 얼마씩 받게 되는가. 그리고 그 결과에
+    윤리적 가치를 집어넣으려 할 때, 정확히 무엇을 포기해야 하는가.
+  </p>
+</header>
+
+<!-- ═══ 1. 입력 ═══ -->
+<section>
+  <div class="shead"><span class="snum">01</span><h2>특성함수 v(S) 설정</h2></div>
+  <p class="snote">
+    A = 설계·브랜드(애플), B = 핵심부품(반도체·디스플레이), C = 조립(폭스콘과 그 노동자).
+    v(S)는 그 연합이 <b>스스로만으로</b> 만들어 낼 수 있는 가치다.
+  </p>
+
+  <div class="presets">
+    <button class="preset" data-p="base">보고서 기본값</button>
+    <button class="preset" data-p="sub">조립이 쉽게 대체됨</button>
+    <button class="preset" data-p="dummy">C가 완전한 더미</button>
+  </div>
+
+  <div class="card">
+    <div class="vgrid" id="vgrid"></div>
+    <div id="dummyflag" class="flag off">C의 더미 여부 — 판정 중</div>
+  </div>
+</section>
+
+<!-- ═══ 2. 샤플리 밸류 ═══ -->
+<section>
+  <div class="shead"><span class="snum">02</span><h2>샤플리 밸류</h2></div>
+
+  <div class="card">
+    <div class="bars" id="baseBars"></div>
+  </div>
+
+  <div class="card">
+    <p class="snote" style="margin-bottom:10px"><b>방법 1 — 모든 합류 순서 나열</b>&nbsp; 3! = 6가지 순서마다 한계 기여도를 구해 평균낸다.</p>
+    <table id="permTable"></table>
+  </div>
+
+  <div class="card">
+    <p class="snote" style="margin-bottom:10px"><b>방법 2 — 공식 직접 적용</b>&nbsp; φᵢ(v) = Σ [ s!(n−s−1)!/n! ] · [ v(S∪{i}) − v(S) ]</p>
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-i="0">i = A</button>
+      <button class="tab" role="tab" data-i="1">i = B</button>
+      <button class="tab" role="tab" data-i="2" aria-selected="true">i = C</button>
+    </div>
+    <table id="formulaTable"></table>
+  </div>
+</section>
+
+<!-- ═══ 3. 시도 1 — 페널티 ═══ -->
+<section>
+  <div class="shead"><span class="snum">03</span><h2>시도 1 — 특성함수에 윤리적 비용 빼기</h2></div>
+  <p class="snote">
+    착취가 발생하는 연합(= C가 포함된 연합)에 사회적 비용 D를 물린다.
+    <span style="font-family:var(--mono)">v*(S) = v(S) − λ·D(S)</span>.
+    노동자를 지키려는 의도인데, 결과를 직접 확인해 보자.
+  </p>
+
+  <div class="card">
+    <div class="vrow" style="grid-template-columns:100px 1fr 62px; margin-bottom:18px">
+      <span class="vlabel">λ·D</span>
+      <input type="range" id="lam" min="0" max="30" step="1" value="0">
+      <input type="number" id="lamN" min="0" max="30" step="1" value="0">
+    </div>
+    <div class="bars" id="penBars"></div>
+    <div id="penMsg"></div>
+  </div>
+</section>
+
+<!-- ═══ 4. 시도 2 — α 저울 (SIGNATURE) ═══ -->
+<section>
+  <div class="shead"><span class="snum">04</span><h2>시도 2 — 배분 규칙 자체를 바꾸기</h2></div>
+  <p class="snote">
+    <span style="font-family:var(--mono)">φᵢ^α(v) = α · φᵢ(v) + (1 − α) · v(N)/n</span> —
+    기여 원칙과 평등 원칙의 가중치를 α 하나로 조절한다. 다이얼을 움직이며
+    <b>어떤 공리가 살아남고 어떤 공리가 깨지는지</b> 지켜볼 것.
+  </p>
+
+  <div class="card beam">
+    <div class="poles">
+      <span class="pole left">기여 원칙<small>α = 1 · 순수 샤플리</small></span>
+      <span class="pole right">평등 원칙<small>α = 0 · 균등 분배</small></span>
+    </div>
+    <div class="beamtrack"></div>
+    <input type="range" id="aslider" min="0" max="1" step="0.01" value="1" aria-label="α 값">
+    <div class="areadout" id="aval">α = 1.00</div>
+    <p class="ahint" id="ahint">기여한 만큼만 받는다.</p>
+
+    <div class="axioms" id="axioms"></div>
+  </div>
+
+  <div class="card">
+    <div class="bars" id="egalBars"></div>
+    <div class="solve">
+      <label for="target">C에게 최소</label>
+      <input type="number" id="target" min="0" max="40" step="0.5" value="20">
+      <span>%를 보장하려면 →</span>
+      <b id="solveOut" style="font-family:var(--mono)">α = 0.6400</b>
+      <button class="act" id="applyA">이 α 적용</button>
+    </div>
+  </div>
+</section>
+
+<footer>
+  30715 이서율 · 자율적 교육과정 탐구보고서 부속 도구 ·
+  샤플리 밸류(Shapley 1953)와 균등해 샤플리 밸류(van den Brink, Funaki &amp; Ju 2013)를 구현함.
+</footer>
+
+</div>
+
+<script>
+"use strict";
+const NAMES = ["A","B","C"];
+const FULL  = ["설계·브랜드","핵심부품","조립 주체"];
+const SUB   = ["애플","반도체·디스플레이","폭스콘 + 노동자"];
+const COLOR = ["#1D4E89","#3E7CB1","#0E7C66"];
+const PERMS = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+
+// v는 비트마스크 키. 1=A, 2=B, 4=C
+const KEYS = [
+  {m:1, lab:"v({A})"},   {m:2, lab:"v({B})"},   {m:4, lab:"v({C})"},
+  {m:3, lab:"v({A,B})"}, {m:5, lab:"v({A,C})"}, {m:6, lab:"v({B,C})"},
+  {m:7, lab:"v(N)"}
+];
+const PRESETS = {
+  base:  {1:30,2:20,4:5,  3:85, 5:55,6:30,7:100},
+  sub:   {1:30,2:20,4:5,  3:97, 5:35,6:25,7:100},
+  dummy: {1:30,2:20,4:0,  3:100,5:30,6:20,7:100}
+};
+
+let v = Object.assign({}, PRESETS.base);
+let alpha = 1, lambda = 0, tabI = 2;
+
+const fmt = (x,d=2) => (Math.round(x*10**d)/10**d).toFixed(d);
+const val = (S) => S === 0 ? 0 : (v[S] ?? 0);
+
+function shapley(getV){
+  const phi = [0,0,0];
+  for (const order of PERMS){
+    let S = 0;
+    for (const i of order){ phi[i] += getV(S | (1<<i)) - getV(S); S |= 1<<i; }
+  }
+  return phi.map(x => x/6);
+}
+const fact = n => n<2 ? 1 : n*fact(n-1);
+
+// ── 입력 UI ──
+const vgrid = document.getElementById("vgrid");
+KEYS.forEach(k => {
+  const row = document.createElement("div");
+  row.className = "vrow";
+  row.innerHTML =
+    `<span class="vlabel">${k.lab}</span>
+     <input type="range" min="0" max="150" step="1" data-m="${k.m}" aria-label="${k.lab}">
+     <input type="number" min="0" max="150" step="1" data-m="${k.m}" aria-label="${k.lab} 숫자 입력">`;
+  vgrid.appendChild(row);
+});
+vgrid.addEventListener("input", e => {
+  const m = +e.target.dataset.m;
+  if (!m) return;
+  v[m] = Math.max(0, +e.target.value || 0);
+  render();
+});
+document.querySelectorAll("button.preset").forEach(b =>
+  b.addEventListener("click", () => { v = Object.assign({}, PRESETS[b.dataset.p]); render(); })
+);
+
+// ── 슬라이더들 ──
+const lam = document.getElementById("lam"), lamN = document.getElementById("lamN");
+const syncLam = e => { lambda = Math.max(0, +e.target.value || 0); lam.value = lamN.value = lambda; render(); };
+lam.addEventListener("input", syncLam); lamN.addEventListener("input", syncLam);
+
+document.getElementById("aslider").addEventListener("input", e => { alpha = +e.target.value; render(); });
+document.getElementById("target").addEventListener("input", render);
+document.getElementById("applyA").addEventListener("click", () => {
+  const a = neededAlpha();
+  if (a === null) return;
+  alpha = Math.min(1, Math.max(0, a));
+  document.getElementById("aslider").value = alpha;
+  render();
+});
+document.getElementById("tabs").addEventListener("click", e => {
+  if (!e.target.dataset.i) return;
+  tabI = +e.target.dataset.i; render();
+});
+
+// ── 렌더 ──
+function bars(el, values, total, ghost){
+  el.innerHTML = "";
+  values.forEach((x,i) => {
+    const w = total > 0 ? Math.max(0, x/total*100) : 0;
+    const g = ghost && total > 0 ? Math.max(0, ghost[i]/total*100) : null;
+    const d = document.createElement("div");
+    d.className = "bar";
+    d.innerHTML =
+      `<span class="bname">${NAMES[i]} — ${FULL[i]}<small>${SUB[i]}</small></span>
+       <span class="btrack">
+         <span class="bfill" style="width:${w}%;background:${COLOR[i]}"></span>
+         ${g !== null ? `<span class="bghost" style="left:${g}%"></span>` : ""}
+       </span>
+       <span class="bval" ${x < 0 ? 'style="color:var(--alert)"' : ""}>${fmt(x)}</span>`;
+    el.appendChild(d);
+  });
+}
+
+function neededAlpha(){
+  const phi = shapley(val), eq = val(7)/3;
+  const t = +document.getElementById("target").value;
+  if (Math.abs(phi[2] - eq) < 1e-9) return null;
+  return (t - eq) / (phi[2] - eq);
+}
+
+function render(){
+  // 입력칸 동기화
+  document.querySelectorAll("[data-m]").forEach(el => { el.value = v[+el.dataset.m]; });
+
+  const phi = shapley(val), vN = val(7);
+
+  // 더미 판정
+  const isDummy = [0,1,2,3].every(s => {
+    const S = [0,1,2,3][s]; // ∅, {A}, {B}, {A,B}
+    return Math.abs(val(S | 4) - val(S)) < 1e-9;
+  });
+  const df = document.getElementById("dummyflag");
+  df.className = "flag " + (isDummy ? "on" : "off");
+  df.textContent = isDummy
+    ? "C는 더미 플레이어다 — 어떤 연합에 합류해도 가치를 늘리지 못한다. 더미 공리에 따라 φ_C = 0."
+    : `C는 더미가 아니다 — 최대 한계 기여도 ${fmt(Math.max(...[0,1,2,3].map(S => val(S|4)-val(S))))}`;
+
+  // 02 기본 샤플리
+  bars(document.getElementById("baseBars"), phi, vN);
+
+  // 순열 전개표
+  let h = `<tr><th>합류 순서</th><th class="m">A</th><th class="m">B</th><th class="m">C</th><th class="m">합</th></tr>`;
+  const tot = [0,0,0];
+  PERMS.forEach(o => {
+    const mc = [0,0,0]; let S = 0;
+    for (const i of o){ mc[i] = val(S|(1<<i)) - val(S); S |= 1<<i; tot[i] += mc[i]; }
+    h += `<tr><td class="l m">${o.map(i=>NAMES[i]).join(" → ")}</td>` +
+         mc.map(x=>`<td class="m">${fmt(x,0)}</td>`).join("") +
+         `<td class="m">${fmt(mc[0]+mc[1]+mc[2],0)}</td></tr>`;
+  });
+  h += `<tr class="sum"><td class="l">합계</td>${tot.map(x=>`<td class="m">${fmt(x,0)}</td>`).join("")}<td class="m">${fmt(tot[0]+tot[1]+tot[2],0)}</td></tr>`;
+  h += `<tr class="sum"><td class="l">평균 (÷6) = φ</td>${phi.map(x=>`<td class="m">${fmt(x)}</td>`).join("")}<td class="m">${fmt(vN)}</td></tr>`;
+  document.getElementById("permTable").innerHTML = h;
+
+  // 공식 직접 적용표
+  document.querySelectorAll("button.tab").forEach(b =>
+    b.setAttribute("aria-selected", +b.dataset.i === tabI));
+  const others = [0,1,2].filter(x => x !== tabI);
+  const subsets = [[], [others[0]], [others[1]], others];
+  let f = `<tr><th>S</th><th class="m">s</th><th class="m">가중치 s!(n−s−1)!/n!</th>` +
+          `<th class="m">한계 기여도 v(S∪{${NAMES[tabI]}}) − v(S)</th><th class="m">곱</th></tr>`;
+  let acc = 0, wsum = 0;
+  subsets.forEach(arr => {
+    const S = arr.reduce((a,i) => a | (1<<i), 0);
+    const s = arr.length, n = 3;
+    const w = fact(s)*fact(n-s-1)/fact(n);
+    const mc = val(S | (1<<tabI)) - val(S);
+    acc += w*mc; wsum += w;
+    const lbl = arr.length ? `{${arr.map(i=>NAMES[i]).join(",")}}` : "∅";
+    f += `<tr><td class="m">${lbl}</td><td class="m">${s}</td>` +
+         `<td class="m">${s}!·${n-s-1}! / 3! = ${fmt(w,3)}</td>` +
+         `<td class="m">${fmt(val(S|(1<<tabI)),0)} − ${fmt(val(S),0)} = ${fmt(mc,0)}</td>` +
+         `<td class="m">${fmt(w*mc)}</td></tr>`;
+  });
+  f += `<tr class="sum"><td>합계</td><td></td><td class="m">${fmt(wsum,3)}</td>` +
+       `<td class="m">φ_${NAMES[tabI]} =</td><td class="m">${fmt(acc)}</td></tr>`;
+  document.getElementById("formulaTable").innerHTML = f;
+
+  // 03 페널티
+  const penV = S => val(S) - (S & 4 ? lambda : 0);
+  const phiPen = shapley(penV);
+  bars(document.getElementById("penBars"), phiPen, vN, phi);
+  const drop = phi[2] - phiPen[2];
+  document.getElementById("penMsg").innerHTML = lambda === 0
+    ? `<div class="callout good" style="border-left-color:var(--line);background:#EEF1F3;color:var(--muted)">
+         λ를 올려 보라. 점선은 페널티 이전의 몫이다.</div>`
+    : `<div class="callout">
+         <b>페널티 ${lambda}을 부과했더니 C의 몫이 ${fmt(phi[2])} → ${fmt(phiPen[2])}로 ${fmt(drop)}만큼 줄었다.</b>
+         페널티 전액이 C에게 청구된 것이다. 원인은 <b>가법성 공리</b>다.
+         <span class="fml">φ(v − λD) = φ(v) − λ · φ(D),&nbsp; 그리고 φ(D) = (0, 0, ${fmt(lambda,0)})</span>
+         D가 움직이는 것은 오직 C가 합류하는 순간뿐이다. A와 B는 페널티 게임 D에서 <b>더미 플레이어</b>이므로 한 푼도 부담하지 않는다.
+         샤플리 밸류는 비용을 “누가 감당할 능력이 있는가”가 아니라 <b>“누구의 존재가 그 비용을 발생시켰는가”</b>로 배분하기 때문이다.
+         결국 착취의 비용은 착취당하는 당사자에게 청구된다. 파이가 ${fmt(vN,0)} → ${fmt(vN-lambda,0)}으로 줄었을 뿐, 재분배는 일어나지 않았다.
+       </div>`;
+
+  // 04 균등해 샤플리
+  const eq = vN/3;
+  const egal = phi.map(x => alpha*x + (1-alpha)*eq);
+  bars(document.getElementById("egalBars"), egal, vN, phi);
+
+  document.getElementById("aval").innerHTML = `α = ${fmt(alpha)} <span>· 기여 ${fmt(alpha*100,0)}% / 평등 ${fmt((1-alpha)*100,0)}%</span>`;
+  document.getElementById("ahint").textContent =
+    alpha === 1 ? "기여한 만큼만 받는다. 기여가 0이면 몫도 0이다."
+    : alpha === 0 ? "기여와 무관하게 똑같이 나눈다."
+    : "기여도와 평등을 함께 반영한다. 기여가 0인 사람도 몫을 받는다.";
+
+  const broke = alpha < 1;
+  const AX = [
+    ["효율성", "Σφᵢ = v(N). 남김없이 전부 배분된다.", true],
+    ["대칭성", "기여가 같으면 몫도 같다.", true],
+    ["가법성", "게임을 따로 계산해 더해도 같다.", true],
+    ["더미 공리", broke
+      ? `기여가 0인 참여자도 (1−α)·v(N)/n = ${fmt((1-alpha)*eq)} 을 받는다.`
+      : "기여가 0인 참여자는 0을 받는다.", !broke]
+  ];
+  document.getElementById("axioms").innerHTML = AX.map(([n,d,ok]) =>
+    `<div class="ax ${ok ? "keep" : "broke"}">
+       <div class="axname">${n}<span class="mark">${ok ? "✓ 유지" : "✗ 파기"}</span></div>
+       <div class="axdesc">${d}</div>
+     </div>`).join("");
+
+  const a = neededAlpha();
+  const out = document.getElementById("solveOut"), btn = document.getElementById("applyA");
+  if (a === null || a < 0 || a > 1){
+    out.textContent = "불가능"; out.style.color = "var(--alert)"; btn.disabled = true;
+  } else {
+    out.textContent = `α = ${fmt(a,4)}`; out.style.color = "var(--ink)"; btn.disabled = false;
+  }
+}
+
+render();
+</script>
+</body>
+</html>
